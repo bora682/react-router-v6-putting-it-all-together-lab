@@ -1,42 +1,50 @@
-import { useState } from "react"
-import { v4 as uuidv4 } from 'uuid'
+import { useState } from "react";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 
 function MovieForm() {
-  const [title, setTitle] = useState("")
-  const [time, setTime] = useState("")
-  const [genres, setGenres] = useState("")
+  const [title, setTitle] = useState("");
+  const [time, setTime] = useState("");
+  const [genres, setGenres] = useState("");
 
-  // Replace me
-  const director = null
-  
-  if (!director) { return <h2>Director not found.</h2>}
+  const { id } = useParams(); // director id from URL
+  const navigate = useNavigate();
+  const { getDirector, addMovie } = useOutletContext();
+  const director = getDirector?.(id);
+
+  if (!director) return <h2>Director not found.</h2>;
 
   const handleSubmit = (e) => {
-    e.preventDefault()
+    e.preventDefault();
     const newMovie = {
       id: uuidv4(),
       title,
       time: parseInt(time),
       genres: genres.split(",").map((genre) => genre.trim()),
-    }
+    };
+
+    // persist to json-server (optional for tests, but fine)
     fetch(`http://localhost:4000/directors/${id}`, {
       method: "PATCH",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify({movies: [...director.movies, newMovie]})
+      body: JSON.stringify({ movies: [...(director.movies || []), newMovie] }),
     })
-    .then(r => {
-      if (!r.ok) { throw new Error("failed to add movie") }
-      return r.json()
-    })
-    .then(data => {
-      console.log(data)
-      // handle context/state changes
-      // navigate to newly created movie page
-    })
-    .catch(console.log)
-  }
+      .then((r) => {
+        if (!r.ok) {
+          throw new Error("failed to add movie");
+        }
+        return r.json();
+      })
+      .then(() => {
+        // update local state for UI/tests
+        addMovie?.(id, newMovie);
+        // navigate to the newly created movie page
+        navigate(`/directors/${id}/movies/${newMovie.id}`);
+      })
+      .catch(console.log);
+  };
 
   return (
     <div>
@@ -66,8 +74,7 @@ function MovieForm() {
         <button type="submit">Add Movie</button>
       </form>
     </div>
-  )
+  );
 }
 
-export default MovieForm
-
+export default MovieForm;
